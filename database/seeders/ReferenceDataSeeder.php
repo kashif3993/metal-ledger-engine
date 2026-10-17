@@ -36,5 +36,15 @@ class ReferenceDataSeeder extends Seeder
             ['name' => 'Other Shop'],
             ['name' => 'Company'],
         ]);
+
+        // Owner-confirmed: 11.664g per tola — set once here, per the brief's
+        // own instruction ("settle it with the owner, and from then on it
+        // is never retyped anywhere"). WeightConversionService falls back to
+        // the textbook 11.6638038g only if this row is ever missing.
+        DB::table('settings')->insert([
+            'key' => 'tola_grams',
+            'value' => '11.664',
+            'updated_at' => now(),
+        ]);
     }
 }
