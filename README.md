@@ -31,10 +31,20 @@ the test suite doesn't need it — every test creates its own rows.
 | **2 — The rate book** | [`RateBookService`](app/Services/MetalLedger/RateBookService.php), [`MetalLedgerRate`](app/Models/MetalLedger/MetalLedgerRate.php) | [`RateBookServiceTest`](tests/Feature/MetalLedger/RateBookServiceTest.php) |
 | **3 — The movement ledger** | [`LedgerService`](app/Services/MetalLedger/LedgerService.php), [`MetalLedgerMovement`](app/Models/MetalLedger/MetalLedgerMovement.php) | [`LedgerServiceTest`](tests/Feature/MetalLedger/LedgerServiceTest.php) |
 | **5 — Buy-back valuation** | [`BuyBackValuationService`](app/Services/MetalLedger/BuyBackValuationService.php), [`MetalLedgerBuyBackDeduction`](app/Models/MetalLedger/MetalLedgerBuyBackDeduction.php) | [`BuyBackValuationServiceTest`](tests/Feature/MetalLedger/BuyBackValuationServiceTest.php) |
+| **6 — Karigar reconciliation** (stretch, built anyway) | [`KarigarWorkOrderService`](app/Services/MetalLedger/KarigarWorkOrderService.php) | [`KarigarWorkOrderServiceTest`](tests/Feature/MetalLedger/KarigarWorkOrderServiceTest.php) |
+| **Day 1 question — rate-lock** | [`RateBookService::quote()`/`assertQuoteStillValid()`](app/Services/MetalLedger/RateBookService.php) | [`RateQuoteLockTest`](tests/Feature/MetalLedger/RateQuoteLockTest.php) |
 
-Tasks 4 and 6 (zakat/historical reporting, karigar reconciliation) are the brief's own
-stretch goals — not built, by design; the design note explains how each lands on what's
-here without reshaping it.
+Task 4 (zakat/historical reporting) is the brief's own stretch goal — not built, by
+design; the design note explains how it lands on what's here without reshaping it.
+Task 6 was a stretch goal too (the brief said not to build it this week) but was built
+anyway, once the four required tasks were solid — see
+[`docs/explain-to-the-office.md`](docs/explain-to-the-office.md) for why that's flagged
+explicitly rather than left for someone else to notice.
+
+The rate-lock mechanism answers the brief's own mandatory Day 1 question (the design
+note's "quote validity window" + "rate-change tolerance") — previously answered only in
+the design note's prose, now actually enforced: `RateBookService::quote()` locks a rate
+for one bill line, `assertQuoteStillValid()` checks it at finalize time.
 
 ## Design notes worth reading in the code itself
 

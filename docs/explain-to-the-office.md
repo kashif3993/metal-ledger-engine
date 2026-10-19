@@ -96,12 +96,63 @@ a sale being undone.*
 
 ---
 
-## What's NOT built yet (and that's by design)
+## 5. Karigar (Goldsmith) Reconciliation — built as a stretch extra
 
-The brief listed two "stretch goals" — zakat/historical reporting, and
-karigar (goldsmith) reconciliation. These weren't built. The design note
-explains *how* they'd be added later without needing to redesign
-anything already here — they're left out on purpose, not forgotten.
+**Note:** the brief listed this as a stretch goal and said not to build
+it this week. It was built anyway, on top of the four required tasks,
+once they were solid — worth saying plainly in the walkthrough rather
+than leaving it to be noticed.
+
+**What it does:** raw ("kacha") metal goes out to a goldsmith at one
+weight; it comes back lighter, since a little is always lost as scrap
+while shaping (and polishing can add a little back). This works out the
+real net weight owed, using the same ratti-per-tola arithmetic a
+karigar's own paper slip already uses by hand — then records it on the
+same movement ledger from section 3, no new table, no special-case code.
+
+**Example:** 8.01g kacha gold, agreed cutting loss 11 ratti/tola → nets
+to **7.092g** actually owed back, matching a real karigar slip's own
+numbers to within a gram of hand-rounding.
+
+**The open question this raises, answered honestly:** the brief also
+asks *"when is a loss figure flagged to the owner"* — unlike the gram-
+per-tola value and the 22K purity factor (both actually confirmed with
+the owner), this threshold (default: 4 ratti/tola) is a placeholder, not
+yet confirmed. It's wired up and configurable so the owner can set the
+real number, but that conversation still needs to happen before this
+flag should be trusted.
+
+---
+
+## 6. Rate-Lock — answering the brief's Day 1 question
+
+**The question:** a cashier opens a bill at 10:02, the rate changes at
+10:20, a second item is added at 10:25, the bill prints at 10:30 — which
+rate did each line use, and what happens if the owner's rate quietly
+moves out from under an open bill?
+
+**What it does:** each line locks the rate the moment it's quoted, not
+at print time. Two owner-set limits are checked when the bill is
+finalized:
+- **Quote validity window** (default 15 minutes) — past this, the line
+  can't be finalized at all; it must be quoted again.
+- **Rate-change tolerance** (default 0.5%) — if the live rate has moved
+  more than this since the line was quoted, the cashier must explicitly
+  confirm before it can go through.
+
+**What it proves:** a bill can legitimately show two different rates on
+two different lines if the rate changed while it was open — and nothing
+can silently finalize a line on a rate that's gone stale or moved too
+far, in either direction (too old, or too different).
+
+---
+
+## What's NOT built (and that's by design)
+
+Only one stretch goal remains out of scope: **zakat / historical
+reporting** (what stock existed on a past date, and what it was worth
+then). The design note explains how it would be added later without
+needing to redesign anything already here.
 
 ---
 
@@ -116,3 +167,9 @@ anything already here — they're left out on purpose, not forgotten.
    old one.
 4. **Buy-back:** always priced fresh, today, off the re-weighed grams
    and today's rate — the original sale price can't reach it, by design.
+5. **Karigar:** a stretch goal, built anyway — raw metal out, finished
+   pieces back, with the real net weight worked out the same way a
+   goldsmith's own paper slip does.
+6. **Rate-lock:** each bill line keeps the rate it was quoted at; a
+   15-minute window and a 0.5% drift tolerance decide when it must be
+   re-quoted or confirmed instead of just printed.
