@@ -33,6 +33,7 @@ class MetalLedgerMovement extends Model
         'rate_per_gram',
         'amount',
         'movement_date',
+        'quoted_at',
         'entered_by_user_id',
         'item_reference',
         'document_reference',
@@ -48,6 +49,7 @@ class MetalLedgerMovement extends Model
             'rate_per_gram' => 'decimal:2',
             'amount' => 'decimal:2',
             'movement_date' => 'date',
+            'quoted_at' => 'datetime',
             'created_at' => 'datetime',
         ];
     }

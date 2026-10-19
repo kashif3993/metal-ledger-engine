@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\MetalLedger;
 
+use App\Exceptions\MetalLedger\QuoteExpiredException;
+use App\Exceptions\MetalLedger\RateDriftedException;
 use App\Models\MetalLedger\MetalLedgerRate;
+use App\Models\Setting;
 use Carbon\CarbonInterface;
 use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * Task 2 of the Metal Ledger brief — the rate book. Every price traces back
@@ -21,6 +25,11 @@ final class RateBookService
     private const RATE_TYPES = ['buy', 'sell'];
 
     private const DEFAULT_STALE_AFTER_HOURS = 12;
+
+    /** Owner-configurable defaults from the Day 1 design note's answer to the brief's mandatory Day 1 question. */
+    private const DEFAULT_QUOTE_VALIDITY_MINUTES = 15;
+
+    private const DEFAULT_RATE_CHANGE_TOLERANCE_PERCENT = 0.5;
 
     /**
      * An Admin/manual entry for one metal + purity + buy-or-sell rate.
@@ -174,6 +183,97 @@ final class RateBookService
         $derivedRatePerGram = round((float) $basis->rate_per_gram * $targetFinenessPercent / $basisFinenessPercent, 2);
 
         return ['rate_per_gram' => $derivedRatePerGram, 'is_derived' => true, 'basis' => $basis];
+    }
+
+    /** Owner-set, default 15 — a locked rate only holds this long before the line must be re-quoted. */
+    public function quoteValidityMinutes(): int
+    {
+        return (int) Setting::get('quote_validity_minutes', self::DEFAULT_QUOTE_VALIDITY_MINUTES);
+    }
+
+    /** Owner-set, default 0.5% — beyond this much drift since quoting, the cashier must confirm before finalizing. */
+    public function rateChangeTolerancePercent(): float
+    {
+        return (float) Setting::get('rate_change_tolerance_percent', self::DEFAULT_RATE_CHANGE_TOLERANCE_PERCENT);
+    }
+
+    /**
+     * The Day 1 question, answered: lock a rate for one bill line, the
+     * moment it is added — not at print time, not for the whole bill. The
+     * returned quote is a plain array so the caller (the counter/POS side,
+     * which this module has no screen of its own for) can hold it for
+     * however long the line sits on the bill, then hand it back to
+     * {@see assertQuoteStillValid()} when the bill is finalized.
+     *
+     * Refuses to quote rather than guess, same as {@see currentRate()} —
+     * there is nothing sensible to lock if no rate is in force.
+     *
+     * @return array{metal_type_id:int, purity_id:int, rate_type:string, rate_per_gram:float, quoted_at: CarbonInterface}
+     */
+    public function quote(int $metalTypeId, int $purityId, string $rateType, ?CarbonInterface $at = null): array
+    {
+        $at ??= now();
+        $current = $this->currentRate($metalTypeId, $purityId, $rateType);
+
+        if ($current === null) {
+            throw new RuntimeException(
+                'No current rate for this metal and purity — refuse to quote rather than guess.'
+            );
+        }
+
+        return [
+            'metal_type_id' => $metalTypeId,
+            'purity_id' => $purityId,
+            'rate_type' => $rateType,
+            'rate_per_gram' => (float) $current->rate_per_gram,
+            'quoted_at' => $at,
+        ];
+    }
+
+    /**
+     * Checked when a bill is finalized (printed) — exactly where the design
+     * note places this check. Two independent rules, checked in this order:
+     *
+     * 1. Quote validity window — if more than {@see quoteValidityMinutes()}
+     *    has passed since the quote, it is too old to finalize at all. This
+     *    cannot be bypassed by `$confirmed` — the only way past it is a
+     *    fresh {@see quote()}.
+     * 2. Rate-change tolerance — if the live rate has since moved more than
+     *    {@see rateChangeTolerancePercent()}, the cashier must explicitly
+     *    confirm (`$confirmed: true`) before this passes.
+     *
+     * Passes silently (returns void) when the quote is still good as-is —
+     * nothing to confirm, nothing to re-quote.
+     */
+    public function assertQuoteStillValid(array $quote, ?CarbonInterface $finalizeAt = null, bool $confirmed = false): void
+    {
+        $finalizeAt ??= now();
+        $quotedAt = $quote['quoted_at'];
+
+        $minutesElapsed = $quotedAt->diffInRealSeconds($finalizeAt) / 60;
+        $validityMinutes = $this->quoteValidityMinutes();
+
+        if ($minutesElapsed > $validityMinutes) {
+            throw new QuoteExpiredException($minutesElapsed, $validityMinutes);
+        }
+
+        $current = $this->currentRate($quote['metal_type_id'], $quote['purity_id'], $quote['rate_type']);
+        if ($current === null) {
+            // The rate disappeared entirely since quoting — treat exactly
+            // like a validity failure; there is nothing to compare drift
+            // against, and finalizing on a now-nonexistent rate is worse
+            // than forcing a re-quote.
+            throw new QuoteExpiredException($minutesElapsed, $validityMinutes);
+        }
+
+        $quotedRate = (float) $quote['rate_per_gram'];
+        $currentRate = (float) $current->rate_per_gram;
+        $driftPercent = $quotedRate == 0.0 ? 0.0 : abs($currentRate - $quotedRate) / $quotedRate * 100;
+        $tolerancePercent = $this->rateChangeTolerancePercent();
+
+        if ($driftPercent > $tolerancePercent && ! $confirmed) {
+            throw new RateDriftedException($quotedRate, $currentRate, $driftPercent, $tolerancePercent);
+        }
     }
 
     private function hasManualEntryOn(int $metalTypeId, int $purityId, string $rateType, CarbonInterface $onDate): bool

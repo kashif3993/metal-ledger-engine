@@ -45,6 +45,7 @@ final class LedgerService
         ?string $itemReference = null,
         ?string $documentReference = null,
         ?string $notes = null,
+        CarbonInterface|string|null $quotedAt = null,
     ): MetalLedgerMovement {
         $this->assertValidDirection($direction);
 
@@ -60,6 +61,11 @@ final class LedgerService
             'rate_per_gram' => $ratePerGram,
             'amount' => $amount,
             'movement_date' => $movementDate,
+            // The moment this rate was locked (see RateBookService::quote())
+            // — defaults to now() for an instant transaction (a buy-back or
+            // karigar settlement, priced and recorded in the same breath),
+            // which trivially satisfies the quote-validity/tolerance checks.
+            'quoted_at' => $quotedAt ?? now(),
             'entered_by_user_id' => $enteredByUserId,
             'item_reference' => $itemReference,
             'document_reference' => $documentReference,
@@ -81,7 +87,7 @@ final class LedgerService
      *                                        metal_type_id, purity_id,
      *                                        weight_grams, rate_per_gram,
      *                                        amount, movement_date,
-     *                                        item_reference,
+     *                                        quoted_at, item_reference,
      *                                        document_reference
      */
     public function correctMovement(
@@ -100,6 +106,10 @@ final class LedgerService
         $ratePerGram = array_key_exists('rate_per_gram', $changes) ? $changes['rate_per_gram'] : (float) $original->rate_per_gram;
         $amount = array_key_exists('amount', $changes) ? $changes['amount'] : (float) $original->amount;
         $movementDate = $changes['movement_date'] ?? $original->movement_date;
+        // A correction fixes a mistake in what was recorded — it doesn't
+        // re-quote the rate, so it keeps the original's quoted_at unless the
+        // caller explicitly passes a new one in $changes.
+        $quotedAt = $changes['quoted_at'] ?? $original->quoted_at;
         $itemReference = array_key_exists('item_reference', $changes) ? $changes['item_reference'] : $original->item_reference;
         $documentReference = array_key_exists('document_reference', $changes) ? $changes['document_reference'] : $original->document_reference;
 
@@ -116,6 +126,7 @@ final class LedgerService
             'rate_per_gram' => $ratePerGram,
             'amount' => $amount,
             'movement_date' => $movementDate,
+            'quoted_at' => $quotedAt,
             'entered_by_user_id' => $enteredByUserId,
             'item_reference' => $itemReference,
             'document_reference' => $documentReference,
