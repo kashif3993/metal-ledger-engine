@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\MetalLedger;
 
 use App\Models\MetalLedger\MetalLedgerMovement;
+use App\Models\Setting;
 use Carbon\CarbonInterface;
 use InvalidArgumentException;
 
@@ -26,17 +27,46 @@ use InvalidArgumentException;
  */
 final class KarigarWorkOrderService
 {
+    /**
+     * A placeholder, not an owner-confirmed figure — unlike `tola_grams` and
+     * the 22K purity factor (both settled directly with the owner per the
+     * brief's "Open questions" table), this one has not actually been asked
+     * yet. It exists so the brief's own rule — "none of them is a
+     * developer's call to make silently" — is at least visible and
+     * overridable (`karigar_wastage_threshold_ratti_per_tola` in Settings)
+     * rather than hardcoded with no way to change it, while being honest
+     * that it still needs a real answer from the owner before this flag can
+     * be trusted.
+     */
+    private const FALLBACK_WASTAGE_THRESHOLD_RATTI_PER_TOLA = 4.0;
+
     public function __construct(
         private readonly WeightConversionService $weight,
         private readonly LedgerService $ledger,
     ) {}
+
+    /** Owner-set (not yet confirmed — see the fallback's own doc comment above). */
+    public function wastageThresholdRattiPerTola(): float
+    {
+        return (float) Setting::get(
+            'karigar_wastage_threshold_ratti_per_tola',
+            self::FALLBACK_WASTAGE_THRESHOLD_RATTI_PER_TOLA,
+        );
+    }
 
     /**
      * Price the cutting loss and polish for one kacha weight, without
      * recording anything. Rates are in ratti lost (or gained) per tola —
      * the unit a karigar agreement is actually struck in.
      *
-     * @return array{kacha_weight_grams: float, cutting_loss_grams: float, polish_grams: float, net_weight_grams: float, explanation: string}
+     * `wastage_flagged` answers the brief's open question — "when is a loss
+     * figure flagged to the owner" — by comparing this work order's own
+     * cutting-loss rate against the shop-wide threshold. It never blocks or
+     * changes the arithmetic above it; it only marks the result for the
+     * owner's attention, the same way a derived rate is marked `is_derived`
+     * rather than silently used.
+     *
+     * @return array{kacha_weight_grams: float, cutting_loss_grams: float, polish_grams: float, net_weight_grams: float, wastage_threshold_ratti_per_tola: float, wastage_flagged: bool, explanation: string}
      */
     public function settle(
         float $kachaWeightGrams,
@@ -57,14 +87,20 @@ final class KarigarWorkOrderService
         $polishGrams = round($this->weight->toGrams($tolaFraction * $polishPerTolaRatti, 'ratti'), 3);
         $netWeightGrams = round($kachaWeightGrams - $cuttingLossGrams + $polishGrams, 3);
 
+        $threshold = $this->wastageThresholdRattiPerTola();
+        $wastageFlagged = $cutPerTolaRatti > $threshold;
+
         return [
             'kacha_weight_grams' => $kachaWeightGrams,
             'cutting_loss_grams' => $cuttingLossGrams,
             'polish_grams' => $polishGrams,
             'net_weight_grams' => $netWeightGrams,
+            'wastage_threshold_ratti_per_tola' => $threshold,
+            'wastage_flagged' => $wastageFlagged,
             'explanation' => sprintf(
-                '%.3fg kacha − %.3fg cutting loss (%.2f ratti/tola) + %.3fg polish (%.2f ratti/tola) = %.3fg net',
+                '%.3fg kacha − %.3fg cutting loss (%.2f ratti/tola) + %.3fg polish (%.2f ratti/tola) = %.3fg net%s',
                 $kachaWeightGrams, $cuttingLossGrams, $cutPerTolaRatti, $polishGrams, $polishPerTolaRatti, $netWeightGrams,
+                $wastageFlagged ? sprintf(' — ABOVE the %.2f ratti/tola threshold, flagged for review', $threshold) : '',
             ),
         ];
     }

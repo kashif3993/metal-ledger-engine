@@ -7,6 +7,7 @@ use App\Models\MetalType;
 use App\Models\Party;
 use App\Models\PartyType;
 use App\Models\Purity;
+use App\Models\Setting;
 use App\Services\MetalLedger\KarigarWorkOrderService;
 use App\Services\MetalLedger\LedgerService;
 use App\Services\MetalLedger\PurityConversionService;
@@ -78,6 +79,63 @@ class KarigarWorkOrderServiceTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         $this->workOrders->settle(kachaWeightGrams: 10, cutPerTolaRatti: -1.0);
+    }
+
+    /**
+     * The brief's open question "karigar wastage threshold — when a loss
+     * figure is flagged to the owner," answered: a cutting-loss rate above
+     * the shop's configured ceiling (default 4 ratti/tola) is marked, never
+     * silently accepted or rejected.
+     */
+    public function test_a_cutting_loss_rate_within_the_default_threshold_is_not_flagged(): void
+    {
+        $settlement = $this->workOrders->settle(kachaWeightGrams: 50.0, cutPerTolaRatti: 3.0);
+
+        $this->assertFalse($settlement['wastage_flagged']);
+        $this->assertEquals(4.0, $settlement['wastage_threshold_ratti_per_tola']);
+    }
+
+    public function test_a_cutting_loss_rate_above_the_default_threshold_is_flagged(): void
+    {
+        $settlement = $this->workOrders->settle(kachaWeightGrams: 50.0, cutPerTolaRatti: 6.0);
+
+        $this->assertTrue($settlement['wastage_flagged']);
+        $this->assertStringContainsString('flagged for review', $settlement['explanation']);
+    }
+
+    public function test_the_owner_can_configure_the_wastage_threshold(): void
+    {
+        Setting::create(['key' => 'karigar_wastage_threshold_ratti_per_tola', 'value' => '2']);
+
+        $settlement = $this->workOrders->settle(kachaWeightGrams: 50.0, cutPerTolaRatti: 3.0);
+
+        $this->assertTrue($settlement['wastage_flagged']);
+        $this->assertEquals(2.0, $settlement['wastage_threshold_ratti_per_tola']);
+    }
+
+    public function test_being_flagged_never_changes_the_arithmetic_only_marks_it(): void
+    {
+        $flagged = $this->workOrders->settle(kachaWeightGrams: 50.0, cutPerTolaRatti: 6.0);
+        $notFlagged = $this->workOrders->settle(kachaWeightGrams: 50.0, cutPerTolaRatti: 6.0);
+
+        $this->assertEquals($notFlagged['cutting_loss_grams'], $flagged['cutting_loss_grams']);
+        $this->assertEquals($notFlagged['net_weight_grams'], $flagged['net_weight_grams']);
+    }
+
+    public function test_a_flagged_settlement_still_records_normally_and_the_flag_reaches_the_caller(): void
+    {
+        $result = $this->workOrders->recordSettlement(
+            karigarPartyId: $this->karigar->id,
+            metalTypeId: $this->gold->id,
+            purityId: $this->gold22k->id,
+            kachaWeightGrams: 50.0,
+            cutPerTolaRatti: 6.0,
+            ratePerGram: 22000.00,
+            movementDate: '2026-10-17',
+        );
+
+        $this->assertTrue($result['settlement']['wastage_flagged']);
+        $this->assertEquals(1, MetalLedgerMovement::count());
     }
 
     public function test_record_settlement_writes_one_metal_movement_and_no_labour_row_when_none_is_owed(): void
