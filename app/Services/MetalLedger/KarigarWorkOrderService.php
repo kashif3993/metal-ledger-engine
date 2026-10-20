@@ -28,15 +28,16 @@ use InvalidArgumentException;
 final class KarigarWorkOrderService
 {
     /**
-     * A placeholder, not an owner-confirmed figure — unlike `tola_grams` and
-     * the 22K purity factor (both settled directly with the owner per the
-     * brief's "Open questions" table), this one has not actually been asked
-     * yet. It exists so the brief's own rule — "none of them is a
-     * developer's call to make silently" — is at least visible and
-     * overridable (`karigar_wastage_threshold_ratti_per_tola` in Settings)
-     * rather than hardcoded with no way to change it, while being honest
-     * that it still needs a real answer from the owner before this flag can
-     * be trusted.
+     * Owner-confirmed, same bar as `tola_grams` and the 22K purity factor.
+     * The shop's real karigar agreement: he keeps 4 ratti of gold per tola
+     * as his own fee — that is not loss, it is his payment, built into the
+     * gold itself rather than paid in cash. Nothing above that is ever
+     * expected; if a work order's cut comes in higher, it is not routine
+     * wear, it means the shop and the karigar need to settle the
+     * difference, which is exactly why it gets flagged here rather than
+     * silently accepted. Still overridable
+     * (`karigar_wastage_threshold_ratti_per_tola` in Settings) since a
+     * individual karigar could have a different agreed rate.
      */
     private const FALLBACK_WASTAGE_THRESHOLD_RATTI_PER_TOLA = 4.0;
 

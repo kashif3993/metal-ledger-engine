@@ -116,13 +116,14 @@ same movement ledger from section 3, no new table, no special-case code.
 to **7.092g** actually owed back, matching a real karigar slip's own
 numbers to within a gram of hand-rounding.
 
-**The open question this raises, answered honestly:** the brief also
-asks *"when is a loss figure flagged to the owner"* — unlike the gram-
-per-tola value and the 22K purity factor (both actually confirmed with
-the owner), this threshold (default: 4 ratti/tola) is a placeholder, not
-yet confirmed. It's wired up and configurable so the owner can set the
-real number, but that conversation still needs to happen before this
-flag should be trusted.
+**The open question this raises, answered and confirmed:** the brief
+also asks *"when is a loss figure flagged to the owner"* — same bar as
+the gram-per-tola value and the 22K purity factor, confirmed directly
+with the owner. His real agreement with a karigar: he keeps **4 ratti
+of gold per tola** as his own fee — that is not loss, it is his payment,
+paid in metal rather than cash. Nothing above that is ever expected; if
+a work order's cut comes in higher, the shop and the karigar need to
+settle the difference, which is exactly when the system flags it.
 
 ---
 

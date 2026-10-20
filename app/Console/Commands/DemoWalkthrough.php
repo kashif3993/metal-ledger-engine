@@ -160,7 +160,7 @@ class DemoWalkthrough extends Command
         $this->line('  Balance now: '.$ledger->metalBalance($karigar->id, $gold->id).'g metal still owed back to the shop, plus Rs '.$result['labour_movement']->amount.' labour owed to him — two separate figures, never netted into one');
 
         $flagged = $workOrders->settle(kachaWeightGrams: 8.01, cutPerTolaRatti: 6.0);
-        $this->line('  A work order with an unusually high cutting loss (6 ratti/tola): wastage_flagged = '.($flagged['wastage_flagged'] ? 'true' : 'false').' (threshold: '.$flagged['wastage_threshold_ratti_per_tola'].' ratti/tola — not yet owner-confirmed, see README)');
+        $this->line('  A work order with a cutting loss above his agreed 4 ratti/tola fee (6 ratti/tola): wastage_flagged = '.($flagged['wastage_flagged'] ? 'true' : 'false').' — owner-confirmed: anything above 4 means the shop and karigar need to settle the difference');
         $this->newLine();
     }
 
