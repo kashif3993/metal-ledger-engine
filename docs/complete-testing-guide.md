@@ -188,7 +188,8 @@ php artisan tinker
 ```
 
 Paste the relevant service calls from [`demo-data-manual-testing.md`](demo-data-manual-testing.md),
-or just run the one-command version of all four:
+or just run the one-command version of everything built (the four required tasks, plus
+the karigar stretch goal and the rate-lock mechanism):
 
 ```
 php artisan demo:walkthrough
