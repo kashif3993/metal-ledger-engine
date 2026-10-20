@@ -36,8 +36,9 @@ the test suite doesn't need it — every test creates its own rows.
 
 Task 4 (zakat/historical reporting) is the brief's own stretch goal — not built, by
 design; the design note explains how it lands on what's here without reshaping it.
-Task 6 was a stretch goal too (the brief said not to build it this week) but was built
-anyway, once the four required tasks were solid — see
+Task 6 was a stretch goal too (the brief said not to build it this week). Building it
+anyway, once the four required tasks were solid, was a confirmed decision — not an
+oversight of the instruction — see
 [`docs/explain-to-the-office.md`](docs/explain-to-the-office.md) for why that's flagged
 explicitly rather than left for someone else to notice.
 

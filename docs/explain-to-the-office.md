@@ -98,10 +98,12 @@ a sale being undone.*
 
 ## 5. Karigar (Goldsmith) Reconciliation — built as a stretch extra
 
-**Note:** the brief listed this as a stretch goal and said not to build
-it this week. It was built anyway, on top of the four required tasks,
-once they were solid — worth saying plainly in the walkthrough rather
-than leaving it to be noticed.
+**Decision (confirmed):** the brief listed this as a stretch goal and
+said not to build it this week. It was built anyway, on top of the four
+required tasks, once they were solid — a deliberate choice to submit it
+as extra work, not an oversight of the instruction. Said plainly here,
+and to be said plainly in the walkthrough too, rather than left for
+someone else to notice.
 
 **What it does:** raw ("kacha") metal goes out to a goldsmith at one
 weight; it comes back lighter, since a little is always lost as scrap
